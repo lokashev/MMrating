@@ -18,12 +18,13 @@
 <body class="pb-24">
 
 <script>
-    // ВСТАВЬТЕ ВАШИ КЛЮЧИ СЮДА
-    const SUPABASE_URL = 'https://akoimsmxpggbntzizlto.supabase.co'; 
+    // === НАСТРОЙКИ ПОДКЛЮЧЕНИЯ ===
+    const SUPABASE_URL = 'https://akoimsmxpggbntzizlto.supabase.co/rest/v1/';  
     const SUPABASE_KEY = 'sb_publishable_ZKevprH_SzPYd59RSGPUSw_LFsA2Row';
-    
-    // ИСПОЛЬЗУЕМ ИМЯ 'sb' ВМЕСТО 'supabase', ЧТОБЫ ИЗБЕЖАТЬ КОНФЛИКТА
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // ВАШ ТАБЕЛЬНЫЙ НОМЕР (ТОЛЬКО ДЛЯ НЕГО ВИДНА АДМИНКА)
+    const ADMIN_ID = '18811975'; 
 </script>
 
 <div class="max-w-md mx-auto bg-gray-50 min-h-screen relative">
@@ -40,7 +41,6 @@
         <div class="bg-white p-6 rounded-2xl card-shadow">
             <input type="text" id="login-id" placeholder="Например: 1045" class="w-full p-4 border rounded-xl text-center text-2xl font-bold tracking-widest mb-4">
             <button onclick="loginUser()" class="w-full bg-indigo-600 text-white py-4 rounded-xl font-semibold text-lg">Войти</button>
-            <p class="text-xs text-gray-400 text-center mt-4">Приложение запомнит это устройство.</p>
         </div>
     </div>
 
@@ -57,22 +57,19 @@
             
             <div class="bg-white/10 backdrop-blur p-4 rounded-2xl border border-white/20 mb-3">
                 <div class="flex justify-between items-center mb-2">
-                    <span class="text-sm font-medium">Коэффициент KPI (Прогноз: <span id="kpi-forecast">-</span>)</span>
+                    <span class="text-sm font-medium">KPI (Прогноз: <span id="kpi-forecast">-</span>)</span>
                     <span id="kpi-main-value" class="text-2xl font-extrabold text-yellow-300">- - -</span>
                 </div>
                 <div class="w-full bg-white/20 rounded-full h-2.5">
                     <div id="kpi-progress" class="bg-yellow-300 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
                 </div>
             </div>
-
-            <!-- Ежедневный план -->
             <div class="bg-white/10 backdrop-blur p-3 rounded-xl text-xs text-indigo-100 flex justify-between items-center">
                 <span>План на сегодня (1/5 недели):</span>
                 <span id="daily-target" class="font-bold text-white">Загрузка...</span>
             </div>
         </header>
 
-        <!-- График План/Факт -->
         <div class="px-4 mt-4">
             <div class="bg-white p-4 rounded-2xl card-shadow">
                 <h3 class="font-bold text-gray-800 mb-2">План / Факт</h3>
@@ -80,7 +77,6 @@
             </div>
         </div>
 
-        <!-- Матрица KPI -->
         <div class="px-4 mt-4">
             <div class="bg-white p-4 rounded-2xl card-shadow">
                 <h3 class="font-bold text-gray-800 mb-3">Детализация (с прогнозом)</h3>
@@ -104,12 +100,11 @@
             <button onclick="submitFact()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold mt-2">Сохранить</button>
         </div>
 
-        <!-- История для редактирования -->
         <h3 class="text-lg font-bold text-gray-800 mt-6 mb-3">Мои записи за эту неделю</h3>
         <div id="history-list" class="space-y-2"></div>
     </div>
 
-    <!-- ЭКРАН АДМИНКИ -->
+    <!-- ЭКРАН АДМИНКИ (ВИДЕН ТОЛЬКО ADMIN_ID) -->
     <div id="screen-admin" class="hidden p-4 fade-in">
         <h2 class="text-xl font-bold text-gray-800 mb-4">Установка плана на неделю</h2>
         <div class="bg-white p-4 rounded-2xl card-shadow space-y-3">
@@ -123,6 +118,14 @@
             <div><label class="text-xs text-gray-500">План Аксессуары (₽)</label><input type="number" id="plan-acc" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
             <button onclick="submitPlan()" class="w-full bg-purple-600 text-white py-3 rounded-xl font-semibold mt-2">Сохранить план</button>
         </div>
+
+        <!-- Блок управления сотрудниками -->
+        <h2 class="text-xl font-bold text-gray-800 mt-8 mb-4">Добавить сотрудника</h2>
+        <div class="bg-white p-4 rounded-2xl card-shadow space-y-3">
+            <div><label class="text-xs text-gray-500">Имя сотрудника</label><input type="text" id="new-user-name" placeholder="Иван Иванов" class="w-full p-3 border rounded-xl text-sm"></div>
+            <div><label class="text-xs text-gray-500">Табельный номер</label><input type="text" id="new-user-id" placeholder="Например: 1045" class="w-full p-3 border rounded-xl text-sm"></div>
+            <button onclick="addEmployee()" class="w-full bg-gray-800 text-white py-3 rounded-xl font-semibold">Добавить в систему</button>
+        </div>
     </div>
 
     <!-- Нижнее меню -->
@@ -135,7 +138,8 @@
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             <span class="text-xs font-medium">Внести факт</span>
         </button>
-        <button onclick="showScreen('admin')" class="flex flex-col items-center text-gray-400 nav-btn" data-screen="admin">
+        <!-- Кнопка админки скрыта по умолчанию -->
+        <button id="nav-admin-btn" onclick="showScreen('admin')" class="hidden flex-col items-center text-gray-400 nav-btn" data-screen="admin">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
             <span class="text-xs font-medium">Админка</span>
         </button>
@@ -158,6 +162,14 @@
     function checkAuth() {
         if (currentUser) {
             document.getElementById('user-name').innerText = currentUser.name;
+            // Показываем админку только если табельный совпадает с ADMIN_ID
+            if (currentUser.employee_id === ADMIN_ID) {
+                document.getElementById('nav-admin-btn').classList.remove('hidden');
+                document.getElementById('nav-admin-btn').classList.add('flex');
+            } else {
+                document.getElementById('nav-admin-btn').classList.add('hidden');
+                document.getElementById('nav-admin-btn').classList.remove('flex');
+            }
             showScreen('dashboard');
         } else {
             showScreen('login');
@@ -168,33 +180,43 @@
         const empId = document.getElementById('login-id').value.trim();
         if (!empId) return alert('Введите табельный номер');
 
-        const { data, error } = await sb.from('users').select('*').eq('employee_id', empId).single();
+        const { data, error } = await sb.from('users').select('*').eq('employee_id', empId).maybeSingle();
         
-        if (error || !data) {
-            const { data: newUser, error: insertError } = await sb
-                .from('users')
-                .insert({ employee_id: empId, name: 'Сотрудник ' + empId })
-                .select()
-                .single();
-            
-            if (insertError) return alert('Ошибка авторизации: ' + insertError.message);
-            currentUser = newUser;
+        // Если сотрудника нет в базе
+        if (!data) {
+            // Проверяем, не админ ли это пытается войти в первый раз
+            if (empId === ADMIN_ID) {
+                const { data: newAdmin } = await sb
+                    .from('users')
+                    .insert({ employee_id: empId, name: 'Администратор' })
+                    .select()
+                    .maybeSingle();
+                currentUser = newAdmin;
+            } else {
+                return alert('Сотрудник не найден. Обратитесь к руководителю.');
+            }
         } else {
             currentUser = data;
         }
 
         localStorage.setItem('kpi_user', JSON.stringify(currentUser));
         document.getElementById('user-name').innerText = currentUser.name;
-        showScreen('dashboard');
+        checkAuth(); // Перепроверяем права при входе
     }
 
     function logout() {
         localStorage.removeItem('kpi_user');
         currentUser = null;
+        document.getElementById('nav-admin-btn').classList.add('hidden');
         showScreen('login');
     }
 
     function showScreen(screenName) {
+        // Защита: если не админ пытается зайти в админку
+        if (screenName === 'admin' && currentUser.employee_id !== ADMIN_ID) {
+            return alert('Доступ запрещен');
+        }
+
         ['login', 'dashboard', 'fact', 'admin'].forEach(s => {
             document.getElementById('screen-' + s).classList.add('hidden');
         });
@@ -218,12 +240,28 @@
     document.getElementById('current-week-display').innerText = currentWeek;
     document.getElementById('plan-week').value = currentWeek;
 
+    // === АДМИН: ДОБАВЛЕНИЕ СОТРУДНИКА ===
+    async function addEmployee() {
+        const name = document.getElementById('new-user-name').value.trim();
+        const id = document.getElementById('new-user-id').value.trim();
+        if (!name || !id) return alert('Заполните оба поля');
+
+        const { error } = await sb.from('users').insert({ employee_id: id, name: name });
+        if (error) {
+            if (error.code === '23505') return alert('Сотрудник с таким табельным уже существует!');
+            return alert('Ошибка: ' + error.message);
+        }
+        alert('Сотрудник ' + name + ' успешно добавлен!');
+        document.getElementById('new-user-name').value = '';
+        document.getElementById('new-user-id').value = '';
+    }
+
     async function loadData() {
-        const { data: plans } = await sb.from('plans').select('*').eq('week_number', currentWeek).single();
+        const { data: plans } = await sb.from('plans').select('*').eq('week_number', currentWeek).maybeSingle();
         const { data: facts } = await sb.from('facts').select('*').eq('week_number', currentWeek);
 
         if (!plans) {
-            document.getElementById('kpi-breakdown').innerHTML = '<p class="text-red-400 text-center">Админ не задал план!</p>';
+            document.getElementById('kpi-breakdown').innerHTML = '<p class="text-red-400 text-center">Админ не задал план на эту неделю!</p>';
             return;
         }
 
@@ -369,7 +407,7 @@
     }
 
     async function editFact(id) {
-        const { data: f } = await sb.from('facts').select('*').eq('id', id).single();
+        const { data: f } = await sb.from('facts').select('*').eq('id', id).maybeSingle();
         if (f) {
             document.getElementById('fact-id').value = f.id;
             document.getElementById('fact-sim').value = f.sim_fact;
@@ -399,35 +437,6 @@
         const { error } = await sb.from('plans').insert([plan]);
         if (error) alert('Ошибка: ' + error.message);
         else alert('План сохранен!');
-    }
-
-    function setupNotifications() {
-        if (!('Notification' in window)) return;
-        const now = new Date();
-        const target = new Date();
-        target.setHours(17, 0, 0, 0);
-        if (now > target) target.setDate(target.getDate() + 1);
-        
-        const msToTarget = target - now;
-        
-        setTimeout(() => {
-            if (Notification.permission === 'granted') {
-                new Notification('План-Факт Контроль', { body: 'Не забудь внести продажи за сегодня!' });
-            }
-            setInterval(() => {
-                if (Notification.permission === 'granted') {
-                    new Notification('План-Факт Контроль', { body: 'Не забудь внести продажи за сегодня!' });
-                }
-            }, 24 * 60 * 60 * 1000);
-        }, msToTarget);
-    }
-
-    if (currentUser) {
-        if (Notification.permission === 'default') {
-            Notification.requestPermission().then(p => { if (p === 'granted') setupNotifications(); });
-        } else if (Notification.permission === 'granted') {
-            setupNotifications();
-        }
     }
 
     checkAuth();
