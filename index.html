@@ -19,7 +19,8 @@
 
 <script>
     // === НАСТРОЙКИ ПОДКЛЮЧЕНИЯ ===
-    const SUPABASE_URL = 'https://akoimsmxpggbntzizlto.supabase.co';  
+    // ВСТАВЬТЕ ВАШ URL БЕЗ /rest/v1 В КОНЦЕ!
+    const SUPABASE_URL = 'https://akoimsmxpggbntzizlto.supabase.co'; 
     const SUPABASE_KEY = 'sb_publishable_ZKevprH_SzPYd59RSGPUSw_LFsA2Row';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
@@ -104,7 +105,7 @@
         <div id="history-list" class="space-y-2"></div>
     </div>
 
-    <!-- ЭКРАН АДМИНКИ (ВИДЕН ТОЛЬКО ADMIN_ID) -->
+    <!-- ЭКРАН АДМИНКИ -->
     <div id="screen-admin" class="hidden p-4 fade-in">
         <h2 class="text-xl font-bold text-gray-800 mb-4">Установка плана на неделю</h2>
         <div class="bg-white p-4 rounded-2xl card-shadow space-y-3">
@@ -119,7 +120,6 @@
             <button onclick="submitPlan()" class="w-full bg-purple-600 text-white py-3 rounded-xl font-semibold mt-2">Сохранить план</button>
         </div>
 
-        <!-- Блок управления сотрудниками -->
         <h2 class="text-xl font-bold text-gray-800 mt-8 mb-4">Добавить сотрудника</h2>
         <div class="bg-white p-4 rounded-2xl card-shadow space-y-3">
             <div><label class="text-xs text-gray-500">Имя сотрудника</label><input type="text" id="new-user-name" placeholder="Иван Иванов" class="w-full p-3 border rounded-xl text-sm"></div>
@@ -138,7 +138,6 @@
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             <span class="text-xs font-medium">Внести факт</span>
         </button>
-        <!-- Кнопка админки скрыта по умолчанию -->
         <button id="nav-admin-btn" onclick="showScreen('admin')" class="hidden flex-col items-center text-gray-400 nav-btn" data-screen="admin">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
             <span class="text-xs font-medium">Админка</span>
@@ -162,7 +161,6 @@
     function checkAuth() {
         if (currentUser) {
             document.getElementById('user-name').innerText = currentUser.name;
-            // Показываем админку только если табельный совпадает с ADMIN_ID
             if (currentUser.employee_id === ADMIN_ID) {
                 document.getElementById('nav-admin-btn').classList.remove('hidden');
                 document.getElementById('nav-admin-btn').classList.add('flex');
@@ -180,18 +178,16 @@
         const empId = document.getElementById('login-id').value.trim();
         if (!empId) return alert('Введите табельный номер');
 
-        const { data, error } = await sb.from('users').select('*').eq('employee_id', empId).maybeSingle();
+        const { data: usersData } = await sb.from('users').select('*').eq('employee_id', empId);
+        const data = usersData && usersData.length > 0 ? usersData[0] : null;
         
-        // Если сотрудника нет в базе
         if (!data) {
-            // Проверяем, не админ ли это пытается войти в первый раз
             if (empId === ADMIN_ID) {
-                const { data: newAdmin } = await sb
+                const { data: newAdminData } = await sb
                     .from('users')
                     .insert({ employee_id: empId, name: 'Администратор' })
-                    .select()
-                    .maybeSingle();
-                currentUser = newAdmin;
+                    .select();
+                currentUser = newAdminData[0];
             } else {
                 return alert('Сотрудник не найден. Обратитесь к руководителю.');
             }
@@ -201,7 +197,7 @@
 
         localStorage.setItem('kpi_user', JSON.stringify(currentUser));
         document.getElementById('user-name').innerText = currentUser.name;
-        checkAuth(); // Перепроверяем права при входе
+        checkAuth();
     }
 
     function logout() {
@@ -212,7 +208,6 @@
     }
 
     function showScreen(screenName) {
-        // Защита: если не админ пытается зайти в админку
         if (screenName === 'admin' && currentUser.employee_id !== ADMIN_ID) {
             return alert('Доступ запрещен');
         }
@@ -240,7 +235,6 @@
     document.getElementById('current-week-display').innerText = currentWeek;
     document.getElementById('plan-week').value = currentWeek;
 
-    // === АДМИН: ДОБАВЛЕНИЕ СОТРУДНИКА ===
     async function addEmployee() {
         const name = document.getElementById('new-user-name').value.trim();
         const id = document.getElementById('new-user-id').value.trim();
@@ -257,7 +251,9 @@
     }
 
     async function loadData() {
-        const { data: plans } = await sb.from('plans').select('*').eq('week_number', currentWeek).maybeSingle();
+        const { data: plansData } = await sb.from('plans').select('*').eq('week_number', currentWeek);
+        const plans = plansData && plansData.length > 0 ? plansData[0] : null;
+        
         const { data: facts } = await sb.from('facts').select('*').eq('week_number', currentWeek);
 
         if (!plans) {
@@ -407,7 +403,9 @@
     }
 
     async function editFact(id) {
-        const { data: f } = await sb.from('facts').select('*').eq('id', id).maybeSingle();
+        const { data: factData } = await sb.from('facts').select('*').eq('id', id);
+        const f = factData && factData.length > 0 ? factData[0] : null;
+        
         if (f) {
             document.getElementById('fact-id').value = f.id;
             document.getElementById('fact-sim').value = f.sim_fact;
