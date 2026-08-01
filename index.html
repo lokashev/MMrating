@@ -19,7 +19,6 @@
 
 <script>
     // === НАСТРОЙКИ ПОДКЛЮЧЕНИЯ ===
-    // ВСТАВЬТЕ ВАШ URL БЕЗ /rest/v1 В КОНЦЕ!
     const SUPABASE_URL = 'https://akoimsmxpggbntzizlto.supabase.co'; 
     const SUPABASE_KEY = 'sb_publishable_ZKevprH_SzPYd59RSGPUSw_LFsA2Row';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -52,6 +51,7 @@
                 <div>
                     <p class="text-indigo-200 text-sm">Привет, <span id="user-name">...</span></p>
                     <h1 class="text-2xl font-bold">Неделя <span id="current-week-display">34</span></h1>
+                    <p id="current-date-display" class="text-indigo-200 text-xs mt-1"></p>
                 </div>
                 <button onclick="logout()" class="text-xs bg-white/20 px-3 py-1 rounded-lg">Выйти</button>
             </div>
@@ -101,7 +101,7 @@
             <button onclick="submitFact()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold mt-2">Сохранить</button>
         </div>
 
-        <h3 class="text-lg font-bold text-gray-800 mt-6 mb-3">Мои записи за эту неделю</h3>
+        <h3 id="history-title" class="text-lg font-bold text-gray-800 mt-6 mb-3">Мои записи за эту неделю</h3>
         <div id="history-list" class="space-y-2"></div>
     </div>
 
@@ -158,16 +158,28 @@
         return 1 + Math.round(((date - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
     }
 
+    // Функция для отображения даты
+    function setCurrentDate() {
+        const days = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+        const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+        const today = new Date();
+        const dateString = `${days[today.getDay()]}, ${today.getDate()} ${months[today.getMonth()]}`;
+        document.getElementById('current-date-display').innerText = dateString;
+    }
+
     function checkAuth() {
         if (currentUser) {
             document.getElementById('user-name').innerText = currentUser.name;
             if (currentUser.employee_id === ADMIN_ID) {
                 document.getElementById('nav-admin-btn').classList.remove('hidden');
                 document.getElementById('nav-admin-btn').classList.add('flex');
+                document.getElementById('history-title').innerText = 'Записи всех сотрудников за эту неделю';
             } else {
                 document.getElementById('nav-admin-btn').classList.add('hidden');
                 document.getElementById('nav-admin-btn').classList.remove('flex');
+                document.getElementById('history-title').innerText = 'Мои записи за эту неделю';
             }
+            setCurrentDate(); // Устанавливаем дату при входе
             showScreen('dashboard');
         } else {
             showScreen('login');
@@ -380,26 +392,42 @@
     }
 
     async function loadHistory() {
-        const { data: facts } = await sb.from('facts').select('*').eq('employee_id', currentUser.employee_id).eq('week_number', currentWeek);
+        let query = sb.from('facts').select('*').eq('week_number', currentWeek);
+        
+        // ЕСЛИ НЕ АДМИН - ИЩЕМ ТОЛЬКО СВОИ ЗАПИСИ
+        if (currentUser.employee_id !== ADMIN_ID) {
+            query = query.eq('employee_id', currentUser.employee_id);
+        }
+
+        const { data: facts } = await query.order('created_at', { ascending: false });
         const list = document.getElementById('history-list');
         
+        // Загружаем список сотрудников, чтобы админ видел имена
+        const { data: users } = await sb.from('users').select('*');
+        const userMap = {};
+        users.forEach(u => userMap[u.employee_id] = u.name);
+
         if (!facts || facts.length === 0) {
             list.innerHTML = '<p class="text-gray-400 text-sm text-center">Записей пока нет</p>';
             return;
         }
 
-        list.innerHTML = facts.map(f => `
+        list.innerHTML = facts.map(f => {
+            // Если админ - показываем имя сотрудника
+            const empName = currentUser.employee_id === ADMIN_ID ? `<span class="font-bold text-indigo-600">${userMap[f.employee_id] || 'Неизвестный'}</span><br>` : '';
+            return `
             <div class="bg-white p-3 rounded-xl flex justify-between items-center card-shadow">
                 <div class="text-sm">
-                    <p class="text-gray-500">${new Date(f.created_at).toLocaleDateString()}</p>
-                    <p>Сим: ${f.sim_fact}, Абон: ${f.sub_fact}</p>
+                    <p class="text-gray-500">${new Date(f.created_at).toLocaleDateString('ru-RU')}</p>
+                    ${empName}
+                    <p>Сим: ${f.sim_fact}, Абон: ${f.sub_fact}<br>Тов: ${f.merch_fact}₽, Фин: ${f.fin_fact}₽, Акс: ${f.acc_fact}₽</p>
                 </div>
                 <div class="flex gap-2">
                     <button onclick="editFact(${f.id})" class="text-indigo-600 text-xs font-bold">Изменить</button>
                     <button onclick="deleteFact(${f.id})" class="text-red-500 text-xs font-bold">Удалить</button>
                 </div>
             </div>
-        `).join('');
+        `}).join('');
     }
 
     async function editFact(id) {
