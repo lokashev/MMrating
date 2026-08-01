@@ -18,9 +18,12 @@
 <body class="pb-24">
 
 <script>
-    const SUPABASE_URL = 'https://akoimsmxpggbntzizlto.supabase.co/rest/v1/';
-    const SUPABASE_KEY = 'sb_publishable_ZKevprH_SzPYd59RSGPUSw_LFsA2Row';
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // ВСТАВЬТЕ ВАШИ КЛЮЧИ СЮДА
+     const SUPABASE_URL = 'sb_publishable_ZKevprH_SzPYd59RSGPUSw_LFsA2Row'; 
+     const SUPABASE_KEY = 'sb_secret_LvpK_sYAcdZuYObEPYZyFw_yF1IkgZc';
+    
+    // ИСПОЛЬЗУЕМ ИМЯ 'sb' ВМЕСТО 'supabase', ЧТОБЫ ИЗБЕЖАТЬ КОНФЛИКТА
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 </script>
 
 <div class="max-w-md mx-auto bg-gray-50 min-h-screen relative">
@@ -140,7 +143,6 @@
 </div>
 
 <script>
-    // --- УПРАВЛЕНИЕ ЭКРАНАМИ И АВТОРИЗАЦИЯ ---
     let currentUser = JSON.parse(localStorage.getItem('kpi_user'));
     let currentWeek = getCurrentWeek();
     let planFactChart;
@@ -166,18 +168,16 @@
         const empId = document.getElementById('login-id').value.trim();
         if (!empId) return alert('Введите табельный номер');
 
-        // Ищем пользователя в базе
-        const { data, error } = await supabase.from('users').select('*').eq('employee_id', empId).single();
+        const { data, error } = await sb.from('users').select('*').eq('employee_id', empId).single();
         
         if (error || !data) {
-            // Если нет, создаем нового (в реальном админке их бы создавал HR, тут для простоты автосоздание)
-            const { data: newUser, error: insertError } = await supabase
+            const { data: newUser, error: insertError } = await sb
                 .from('users')
                 .insert({ employee_id: empId, name: 'Сотрудник ' + empId })
                 .select()
                 .single();
             
-            if (insertError) return alert('Ошибка авторизации');
+            if (insertError) return alert('Ошибка авторизации: ' + insertError.message);
             currentUser = newUser;
         } else {
             currentUser = data;
@@ -215,13 +215,12 @@
         if(screenName === 'fact') loadHistory();
     }
 
-    // --- ЛОГИКА ДАННЫХ ---
     document.getElementById('current-week-display').innerText = currentWeek;
     document.getElementById('plan-week').value = currentWeek;
 
     async function loadData() {
-        const { data: plans } = await supabase.from('plans').select('*').eq('week_number', currentWeek).single();
-        const { data: facts } = await supabase.from('facts').select('*').eq('week_number', currentWeek);
+        const { data: plans } = await sb.from('plans').select('*').eq('week_number', currentWeek).single();
+        const { data: facts } = await sb.from('facts').select('*').eq('week_number', currentWeek);
 
         if (!plans) {
             document.getElementById('kpi-breakdown').innerHTML = '<p class="text-red-400 text-center">Админ не задал план!</p>';
@@ -237,9 +236,8 @@
             totalFacts.acc += parseFloat(f.acc_fact);
         });
 
-        // Прогноз: считаем прошедшие дни (Пн=1, Вс=7). Рабочих 5.
         const today = new Date().getDay(); 
-        const workDaysPassed = today === 0 ? 5 : Math.min(today, 5); // Если воскресенье, считаем что неделя прошла
+        const workDaysPassed = today === 0 ? 5 : Math.min(today, 5);
         const workDaysTotal = 5;
 
         const metrics = [
@@ -255,22 +253,18 @@
         let chartLabels = [], chartPlan = [], chartFact = [], chartForecast = [];
 
         metrics.forEach(m => {
-            // Текущий %
             let percent = m.plan > 0 ? (m.fact / m.plan) * 100 : 0;
             let calcPercent = percent, displayPercent = percent.toFixed(0);
             let statusColor = 'text-gray-500', statusText = '';
 
-            // Прогноз %
             let forecastFact = workDaysPassed > 0 ? (m.fact / workDaysPassed) * workDaysTotal : 0;
             let fcPercent = m.plan > 0 ? (forecastFact / m.plan) * 100 : 0;
             let calcFcPercent = fcPercent;
 
-            // Применяем правила KPI (текущий)
             if (percent < 70) { calcPercent = 0; statusColor = 'text-red-500 font-bold'; statusText = '(обнуление)'; allMaxedOut = false; }
             else if (percent > 150) { calcPercent = 150; displayPercent = '150'; statusColor = 'text-blue-500 font-bold'; statusText = '(потолок)'; }
             else { allMaxedOut = false; }
 
-            // Применяем правила KPI (прогноз)
             if (fcPercent < 70) { calcFcPercent = 0; allMaxedOutFc = false; }
             else if (fcPercent > 150) { calcFcPercent = 150; }
             else { allMaxedOutFc = false; }
@@ -280,11 +274,9 @@
 
             breakdownHTML += `<div class="flex justify-between"><span>${m.name}</span><span class="${statusColor}">${displayPercent}% (Прогноз: ${fcPercent.toFixed(0)}%) ${statusText}</span></div>`;
             
-            // План на день (для шапки)
             const dailyVal = m.plan > 0 ? (m.plan / workDaysTotal).toFixed(0) : 0;
             dailyTargetHTML += `${m.name}: ${dailyVal} / `;
 
-            // Данные для графика
             chartLabels.push(m.name);
             chartPlan.push(m.plan);
             chartFact.push(m.fact);
@@ -300,7 +292,7 @@
         document.getElementById('kpi-breakdown').innerHTML = breakdownHTML;
         document.getElementById('kpi-main-value').innerText = (totalKpi / 100).toFixed(2);
         document.getElementById('kpi-forecast').innerText = (forecastKpi / 100).toFixed(2);
-        document.getElementById('daily-target').innerText = dailyTargetHTML.slice(0, -2); // Убираем последнюю запятую
+        document.getElementById('daily-target').innerText = dailyTargetHTML.slice(0, -2);
         document.getElementById('kpi-progress').style.width = Math.min(totalKpi / 2, 100) + '%';
 
         updateChart(chartLabels, chartPlan, chartFact, chartForecast);
@@ -323,7 +315,6 @@
         });
     }
 
-    // --- ВВОД И РЕДАКТИРОВАНИЕ ФАКТОВ ---
     async function submitFact() {
         const factId = document.getElementById('fact-id').value;
         const factData = {
@@ -338,11 +329,9 @@
 
         let error;
         if (factId) {
-            // Редактирование
-            ({ error } = await supabase.from('facts').update(factData).eq('id', factId));
+            ({ error } = await sb.from('facts').update(factData).eq('id', factId));
         } else {
-            // Новый факт
-            ({ error } = await supabase.from('facts').insert([factData]));
+            ({ error } = await sb.from('facts').insert([factData]));
         }
 
         if (error) return alert('Ошибка: ' + error.message);
@@ -357,7 +346,7 @@
     }
 
     async function loadHistory() {
-        const { data: facts } = await supabase.from('facts').select('*').eq('employee_id', currentUser.employee_id).eq('week_number', currentWeek);
+        const { data: facts } = await sb.from('facts').select('*').eq('employee_id', currentUser.employee_id).eq('week_number', currentWeek);
         const list = document.getElementById('history-list');
         
         if (!facts || facts.length === 0) {
@@ -380,7 +369,7 @@
     }
 
     async function editFact(id) {
-        const { data: f } = await supabase.from('facts').select('*').eq('id', id).single();
+        const { data: f } = await sb.from('facts').select('*').eq('id', id).single();
         if (f) {
             document.getElementById('fact-id').value = f.id;
             document.getElementById('fact-sim').value = f.sim_fact;
@@ -394,7 +383,7 @@
 
     async function deleteFact(id) {
         if (!confirm('Удалить эту запись?')) return;
-        await supabase.from('facts').delete().eq('id', id);
+        await sb.from('facts').delete().eq('id', id);
         loadHistory();
     }
 
@@ -407,19 +396,17 @@
             fin_plan: parseFloat(document.getElementById('plan-fin').value) || 0,
             acc_plan: parseFloat(document.getElementById('plan-acc').value) || 0
         };
-        const { error } = await supabase.from('plans').insert([plan]);
+        const { error } = await sb.from('plans').insert([plan]);
         if (error) alert('Ошибка: ' + error.message);
         else alert('План сохранен!');
     }
 
-    // --- ПУШ-УВЕДОМЛЕНИЯ ---
     function setupNotifications() {
         if (!('Notification' in window)) return;
-        // В 17:00 напоминаем
         const now = new Date();
         const target = new Date();
         target.setHours(17, 0, 0, 0);
-        if (now > target) target.setDate(target.getDate() + 1); // Если уже после 17, на завтра
+        if (now > target) target.setDate(target.getDate() + 1);
         
         const msToTarget = target - now;
         
@@ -427,7 +414,6 @@
             if (Notification.permission === 'granted') {
                 new Notification('План-Факт Контроль', { body: 'Не забудь внести продажи за сегодня!' });
             }
-            // Перезапускаем на следующий день (грубо, для PWA хватает)
             setInterval(() => {
                 if (Notification.permission === 'granted') {
                     new Notification('План-Факт Контроль', { body: 'Не забудь внести продажи за сегодня!' });
@@ -436,7 +422,6 @@
         }, msToTarget);
     }
 
-    // Запрос разрешения на пуши при первом входе
     if (currentUser) {
         if (Notification.permission === 'default') {
             Notification.requestPermission().then(p => { if (p === 'granted') setupNotifications(); });
@@ -445,7 +430,6 @@
         }
     }
 
-    // СТАРТ
     checkAuth();
 </script>
 </body>
