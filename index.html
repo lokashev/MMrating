@@ -11,11 +11,11 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .bottom-nav { box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
-        .card-shadow { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06); }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        ::-webkit-scrollbar { width: 0px; }
     </style>
 </head>
 <body class="pb-24">
@@ -27,121 +27,192 @@
     const ADMIN_ID = '18811975'; 
 </script>
 
-<div class="max-w-md mx-auto bg-gray-50 min-h-screen relative">
+<div class="max-w-md mx-auto min-h-screen relative">
     
-    <div id="screen-login" class="hidden p-6 mt-20 fade-in">
+    <!-- ЭКРАН АВТОРИЗАЦИИ -->
+    <div id="screen-login" class="hidden p-6 mt-24 fade-in">
         <div class="text-center mb-8">
-            <div class="w-20 h-20 bg-indigo-600 rounded-3xl mx-auto mb-4 flex items-center justify-center shadow-lg">
-                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+            <div class="w-24 h-24 bg-indigo-600 rounded-3xl mx-auto mb-4 flex items-center justify-center shadow-lg rotate-3">
+                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
             </div>
-            <h1 class="text-2xl font-bold text-gray-800">Вход в систему</h1>
-            <p class="text-gray-500 text-sm mt-2">Введите ваш табельный номер</p>
+            <h1 class="text-3xl font-extrabold text-gray-900">План-Факт</h1>
+            <p class="text-gray-500 text-sm mt-1">Введите ваш табельный номер</p>
         </div>
-        <div class="bg-white p-6 rounded-2xl card-shadow">
-            <input type="text" id="login-id" placeholder="Например: 1045" class="w-full p-4 border rounded-xl text-center text-2xl font-bold tracking-widest mb-4">
-            <button onclick="loginUser()" class="w-full bg-indigo-600 text-white py-4 rounded-xl font-semibold text-lg">Войти</button>
+        <div class="bg-white p-6 rounded-3xl shadow-xl border border-gray-100">
+            <input type="text" id="login-id" placeholder="Например: 1045" class="w-full p-4 border-2 border-gray-200 rounded-2xl text-center text-3xl font-bold tracking-widest mb-4 focus:border-indigo-500 focus:outline-none">
+            <button onclick="loginUser()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg shadow-md active:scale-95 transition-transform">Войти</button>
         </div>
     </div>
 
-    <div id="screen-dashboard" class="hidden">
-        <header class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 rounded-b-3xl shadow-lg">
-            <div class="flex justify-between items-center mb-4">
+    <!-- ЭКРАН ДАШБОРДА -->
+    <div id="screen-dashboard" class="hidden fade-in">
+        <header class="bg-white p-4 border-b border-gray-100 sticky top-0 z-10">
+            <div class="flex justify-between items-center">
                 <div>
-                    <p class="text-indigo-200 text-sm">Привет, <span id="user-name">...</span></p>
-                    <h1 class="text-2xl font-bold">Неделя <span id="current-week-display">34</span></h1>
-                    <p id="current-date-display" class="text-indigo-200 text-xs mt-1"></p>
+                    <p class="text-gray-500 text-xs font-medium" id="current-date-display">...</p>
+                    <h1 class="text-xl font-bold text-gray-900">Привет, <span id="user-name">...</span></h1>
                 </div>
-                <button onclick="logout()" class="text-xs bg-white/20 px-3 py-1 rounded-lg">Выйти</button>
-            </div>
-            <div class="bg-white/10 backdrop-blur p-4 rounded-2xl border border-white/20 mb-3">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="text-sm font-medium">KPI (Прогноз: <span id="kpi-forecast">-</span>)</span>
-                    <span id="kpi-main-value" class="text-2xl font-extrabold text-yellow-300">- - -</span>
+                <div class="text-right">
+                    <button onclick="logout()" class="text-xs bg-gray-100 text-gray-600 px-3 py-2 rounded-lg font-medium">Выйти</button>
                 </div>
-                <div class="w-full bg-white/20 rounded-full h-2.5">
-                    <div id="kpi-progress" class="bg-yellow-300 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
-                </div>
-            </div>
-            <div class="bg-white/10 backdrop-blur p-3 rounded-xl text-xs text-indigo-100 flex justify-between items-center">
-                <span>План на сегодня (1/5 недели):</span>
-                <span id="daily-target" class="font-bold text-white">Загрузка...</span>
             </div>
         </header>
 
-        <div class="px-4 mt-4">
-            <div class="bg-white p-4 rounded-2xl card-shadow">
-                <h3 class="font-bold text-gray-800 mb-2">План / Факт</h3>
-                <canvas id="planFactChart" height="180"></canvas>
+        <!-- ПЛАН НА СЕГОДНЯ (Главный фокус) -->
+        <div class="p-4">
+            <h2 class="text-lg font-bold text-gray-800 mb-3">План на сегодня</h2>
+            <div id="daily-targets" class="grid grid-cols-2 gap-3 mb-4">
+                <!-- Заполняется JS -->
             </div>
+            <button onclick="showScreen('fact')" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg shadow-md active:scale-95 transition-transform flex items-center justify-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                Внести продажи
+            </button>
         </div>
 
-        <div class="px-4 mt-4">
-            <div class="bg-white p-4 rounded-2xl card-shadow">
-                <h3 class="font-bold text-gray-800 mb-3">Детализация (с прогнозом)</h3>
-                <div id="kpi-breakdown" class="space-y-2 text-sm text-gray-600"></div>
+        <!-- ОБЩАЯ КАРТИНА НЕДЕЛИ -->
+        <div class="p-4 pt-0">
+            <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm mb-4">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Итог недели <span id="current-week-display">34</span></p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">KPI <span id="kpi-main-value" class="text-indigo-600">- -</span></p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Прогноз</p>
+                        <p class="text-xl font-bold text-gray-700 mt-1" id="kpi-forecast">-</p>
+                    </div>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-3 mb-1">
+                    <div id="kpi-progress" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-3 rounded-full transition-all duration-700" style="width: 0%"></div>
+                </div>
+                <p class="text-xs text-gray-400 mt-2 text-center" id="motivation-text">Загрузка данных...</p>
+            </div>
+
+            <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm mb-4">
+                <h3 class="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wider text-gray-500">График План / Факт</h3>
+                <canvas id="planFactChart" height="180"></canvas>
+            </div>
+
+            <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+                <h3 class="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wider text-gray-500">Детализация</h3>
+                <div id="kpi-breakdown" class="space-y-3 text-sm"></div>
             </div>
         </div>
     </div>
 
+    <!-- ЭКРАН ВНЕСТИ ФАКТ -->
     <div id="screen-fact" class="hidden p-4 fade-in">
-        <h2 class="text-xl font-bold text-gray-800 mb-4">Внести данные за день</h2>
-        <div class="bg-white p-4 rounded-2xl card-shadow space-y-3">
-            <input type="hidden" id="fact-id">
-            <div class="grid grid-cols-2 gap-3">
-                <div><label class="text-xs text-gray-500">Активные SIM</label><input type="number" id="fact-sim" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
-                <div><label class="text-xs text-gray-500">Абонементы</label><input type="number" id="fact-sub" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
-            </div>
-            <div><label class="text-xs text-gray-500">Товарооборот (₽)</label><input type="number" id="fact-merch" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
-            <div><label class="text-xs text-gray-500">Финуслуги (₽)</label><input type="number" id="fact-fin" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
-            <div><label class="text-xs text-gray-500">Аксессуары (₽)</label><input type="number" id="fact-acc" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
-            <button onclick="submitFact()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold mt-2">Сохранить</button>
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-gray-900">Внести данные</h2>
+            <button onclick="showScreen('dashboard')" class="text-sm text-indigo-600 font-medium">Назад</button>
         </div>
 
-        <h3 id="history-title" class="text-lg font-bold text-gray-800 mt-6 mb-3">Мои записи за эту неделю</h3>
+        <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+            <input type="hidden" id="fact-id">
+            
+            <!-- Умные счетчики для штучных товаров -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-gray-50 p-4 rounded-2xl">
+                    <label class="text-xs text-gray-500 font-medium">Активные SIM</label>
+                    <div class="flex items-center justify-between mt-2">
+                        <button onclick="changeVal('fact-sim', -1)" class="w-10 h-10 bg-white border rounded-xl text-2xl font-bold text-gray-600 active:scale-90">-</button>
+                        <input type="number" id="fact-sim" value="0" class="w-12 text-center text-2xl font-bold bg-transparent border-none focus:outline-none">
+                        <button onclick="changeVal('fact-sim', 1)" class="w-10 h-10 bg-indigo-600 text-white rounded-xl text-2xl font-bold active:scale-90">+</button>
+                    </div>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-2xl">
+                    <label class="text-xs text-gray-500 font-medium">Абонементы</label>
+                    <div class="flex items-center justify-between mt-2">
+                        <button onclick="changeVal('fact-sub', -1)" class="w-10 h-10 bg-white border rounded-xl text-2xl font-bold text-gray-600 active:scale-90">-</button>
+                        <input type="number" id="fact-sub" value="0" class="w-12 text-center text-2xl font-bold bg-transparent border-none focus:outline-none">
+                        <button onclick="changeVal('fact-sub', 1)" class="w-10 h-10 bg-indigo-600 text-white rounded-xl text-2xl font-bold active:scale-90">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Обычные инпуты для денег -->
+            <div class="border-t pt-4 space-y-3">
+                <div>
+                    <label class="text-xs text-gray-500 font-medium">Товарооборот (₽)</label>
+                    <input type="number" id="fact-merch" placeholder="0" class="w-full p-3 mt-1 border border-gray-200 rounded-2xl text-lg font-bold focus:border-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 font-medium">Финуслуги (₽)</label>
+                    <input type="number" id="fact-fin" placeholder="0" class="w-full p-3 mt-1 border border-gray-200 rounded-2xl text-lg font-bold focus:border-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 font-medium">Аксессуары (₽)</label>
+                    <input type="number" id="fact-acc" placeholder="0" class="w-full p-3 mt-1 border border-gray-200 rounded-2xl text-lg font-bold focus:border-indigo-500 focus:outline-none">
+                </div>
+            </div>
+
+            <button onclick="submitFact()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg shadow-md active:scale-95 transition-transform">
+                Сохранить факт
+            </button>
+        </div>
+
+        <h3 id="history-title" class="text-lg font-bold text-gray-900 mt-8 mb-3">Мои записи за неделю</h3>
         <div id="history-list" class="space-y-2"></div>
     </div>
 
     <!-- ЭКРАН АДМИНКИ -->
     <div id="screen-admin" class="hidden p-4 fade-in">
-        <h2 class="text-xl font-bold text-gray-800 mb-4">Управление планами</h2>
-        <div class="bg-white p-4 rounded-2xl card-shadow space-y-3">
-            <input type="hidden" id="plan-id">
-             <div><label class="text-xs text-gray-500">Номер недели</label><input type="number" id="plan-week" placeholder="34" class="w-full p-3 border rounded-xl text-sm"></div>
-             <div class="grid grid-cols-2 gap-3">
-                <div><label class="text-xs text-gray-500">Дата начала</label><input type="date" id="plan-start" class="w-full p-3 border rounded-xl text-sm"></div>
-                <div><label class="text-xs text-gray-500">Дата окончания</label><input type="date" id="plan-end" class="w-full p-3 border rounded-xl text-sm"></div>
-            </div>
-             <div class="grid grid-cols-2 gap-3">
-                <div><label class="text-xs text-gray-500">План SIM (шт)</label><input type="number" id="plan-sim" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
-                <div><label class="text-xs text-gray-500">План Абонементы (шт)</label><input type="number" id="plan-sub" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
-            </div>
-            <div><label class="text-xs text-gray-500">План Товарооборот (₽)</label><input type="number" id="plan-merch" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
-            <div><label class="text-xs text-gray-500">План Финуслуги (₽)</label><input type="number" id="plan-fin" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
-            <div><label class="text-xs text-gray-500">План Аксессуары (₽)</label><input type="number" id="plan-acc" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
-            <button onclick="submitPlan()" class="w-full bg-purple-600 text-white py-3 rounded-xl font-semibold mt-2">Сохранить план</button>
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-gray-900">Админ-панель</h2>
+            <button onclick="showScreen('dashboard')" class="text-sm text-indigo-600 font-medium">Назад</button>
         </div>
 
-        <h3 class="text-lg font-bold text-gray-800 mt-6 mb-3">Существующие планы</h3>
+        <!-- Форма плана -->
+        <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-3">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-gray-800" id="plan-form-title">Новый план</h3>
+                <button onclick="clearPlanForm()" class="text-xs text-red-500 font-medium">Очистить</button>
+            </div>
+            <input type="hidden" id="plan-id">
+            
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-xs text-gray-500 font-medium">Неделя</label><input type="number" id="plan-week" placeholder="34" class="w-full p-3 mt-1 border border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"></div>
+                <div class="flex items-end"><p class="text-xs text-gray-400 pb-3">(Год не указывается)</p></div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-xs text-gray-500 font-medium">Дата начала</label><input type="date" id="plan-start" class="w-full p-3 mt-1 border border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"></div>
+                <div><label class="text-xs text-gray-500 font-medium">Дата конца</label><input type="date" id="plan-end" class="w-full p-3 mt-1 border border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"></div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3 pt-2">
+                <div><label class="text-xs text-gray-500 font-medium">План SIM</label><input type="number" id="plan-sim" placeholder="0" class="w-full p-3 mt-1 border border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"></div>
+                <div><label class="text-xs text-gray-500 font-medium">План Абонем.</label><input type="number" id="plan-sub" placeholder="0" class="w-full p-3 mt-1 border border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"></div>
+            </div>
+            <div><label class="text-xs text-gray-500 font-medium">Товарооборот</label><input type="number" id="plan-merch" placeholder="0" class="w-full p-3 mt-1 border border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"></div>
+            <div><label class="text-xs text-gray-500 font-medium">Финуслуги</label><input type="number" id="plan-fin" placeholder="0" class="w-full p-3 mt-1 border border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"></div>
+            <div><label class="text-xs text-gray-500 font-medium">Аксессуары</label><input type="number" id="plan-acc" placeholder="0" class="w-full p-3 mt-1 border border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"></div>
+            
+            <button onclick="submitPlan()" class="w-full bg-purple-600 text-white py-3 rounded-xl font-semibold mt-2 shadow-sm active:scale-95">Сохранить план</button>
+        </div>
+
+        <h3 class="text-lg font-bold text-gray-900 mt-6 mb-3">Существующие планы</h3>
         <div id="plans-list" class="space-y-2"></div>
 
-        <h2 class="text-xl font-bold text-gray-800 mt-8 mb-4">Добавить сотрудника</h2>
-        <div class="bg-white p-4 rounded-2xl card-shadow space-y-3">
-            <div><label class="text-xs text-gray-500">Имя сотрудника</label><input type="text" id="new-user-name" placeholder="Иван Иванов" class="w-full p-3 border rounded-xl text-sm"></div>
-            <div><label class="text-xs text-gray-500">Табельный номер</label><input type="text" id="new-user-id" placeholder="Например: 1045" class="w-full p-3 border rounded-xl text-sm"></div>
-            <button onclick="addEmployee()" class="w-full bg-gray-800 text-white py-3 rounded-xl font-semibold">Добавить в систему</button>
+        <h3 class="text-lg font-bold text-gray-900 mt-8 mb-3">Добавить сотрудника</h3>
+        <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-3">
+            <input type="text" id="new-user-name" placeholder="Имя сотрудника" class="w-full p-3 border border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none">
+            <input type="text" id="new-user-id" placeholder="Табельный номер" class="w-full p-3 border border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none">
+            <button onclick="addEmployee()" class="w-full bg-gray-900 text-white py-3 rounded-xl font-semibold active:scale-95">Добавить</button>
         </div>
     </div>
 
-    <nav class="bottom-nav fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white flex justify-around p-3 rounded-t-2xl">
-        <button onclick="showScreen('dashboard')" class="flex flex-col items-center text-gray-400 nav-btn" data-screen="dashboard">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-            <span class="text-xs font-medium">Дашборд</span>
+    <!-- Нижнее меню -->
+    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-100 flex justify-around p-2.5 rounded-t-2xl">
+        <button onclick="showScreen('dashboard')" class="flex flex-col items-center text-gray-400 nav-btn p-2" data-screen="dashboard">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+            <span class="text-xs font-medium">Главная</span>
         </button>
-        <button onclick="showScreen('fact')" class="flex flex-col items-center text-gray-400 nav-btn" data-screen="fact">
+        <button onclick="showScreen('fact')" class="flex flex-col items-center text-gray-400 nav-btn p-2" data-screen="fact">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             <span class="text-xs font-medium">Внести факт</span>
         </button>
-        <button id="nav-admin-btn" onclick="showScreen('admin')" class="hidden flex-col items-center text-gray-400 nav-btn" data-screen="admin">
+        <button id="nav-admin-btn" onclick="showScreen('admin')" class="hidden flex-col items-center text-gray-400 nav-btn p-2" data-screen="admin">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
             <span class="text-xs font-medium">Админка</span>
         </button>
@@ -174,11 +245,11 @@
             if (currentUser.employee_id === ADMIN_ID) {
                 document.getElementById('nav-admin-btn').classList.remove('hidden');
                 document.getElementById('nav-admin-btn').classList.add('flex');
-                document.getElementById('history-title').innerText = 'Записи всех сотрудников за эту неделю';
+                document.getElementById('history-title').innerText = 'Записи всех сотрудников';
             } else {
                 document.getElementById('nav-admin-btn').classList.add('hidden');
                 document.getElementById('nav-admin-btn').classList.remove('flex');
-                document.getElementById('history-title').innerText = 'Мои записи за эту неделю';
+                document.getElementById('history-title').innerText = 'Мои записи за неделю';
             }
             setCurrentDate();
             showScreen('dashboard');
@@ -213,7 +284,6 @@
     function logout() {
         localStorage.removeItem('kpi_user');
         currentUser = null;
-        document.getElementById('nav-admin-btn').classList.add('hidden');
         showScreen('login');
     }
 
@@ -224,10 +294,8 @@
         document.getElementById('screen-' + screenName).classList.remove('hidden');
         document.getElementById('screen-' + screenName).classList.add('fade-in');
 
-        document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.classList.remove('text-indigo-600');
-            btn.classList.add('text-gray-400');
-        });
+        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('text-indigo-600'));
+        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.add('text-gray-400'));
         const activeBtn = document.querySelector(`[data-screen="${screenName}"]`);
         if (activeBtn) {
             activeBtn.classList.add('text-indigo-600');
@@ -239,37 +307,32 @@
         if(screenName === 'admin') loadPlansList();
     }
 
+    // Быстрое изменение значений кнопками +/-
+    function changeVal(inputId, delta) {
+        const input = document.getElementById(inputId);
+        let newVal = (parseInt(input.value) || 0) + delta;
+        if (newVal < 0) newVal = 0;
+        input.value = newVal;
+    }
+
     document.getElementById('current-week-display').innerText = currentWeek;
     document.getElementById('plan-week').value = currentWeek;
 
-    async function addEmployee() {
-        const name = document.getElementById('new-user-name').value.trim();
-        const id = document.getElementById('new-user-id').value.trim();
-        if (!name || !id) return alert('Заполните оба поля');
-
-        const { error } = await sb.from('users').insert({ employee_id: id, name: name });
-        if (error) return alert(error.code === '23505' ? 'Сотрудник с таким табельным уже существует!' : 'Ошибка: ' + error.message);
-        
-        alert('Сотрудник ' + name + ' успешно добавлен!');
-        document.getElementById('new-user-name').value = '';
-        document.getElementById('new-user-id').value = '';
-    }
-
-    // === ЛОГИКА ПЛАНОВ (АДМИН) ===
+    // === АДМИН: ПЛАНЫ ===
     async function loadPlansList() {
         const { data: plans } = await sb.from('plans').select('*').order('week_number', { ascending: false });
         const list = document.getElementById('plans-list');
         if (!plans || plans.length === 0) {
-            list.innerHTML = '<p class="text-gray-400 text-sm text-center">Планов пока нет</p>';
+            list.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Планов пока нет</p>';
             return;
         }
         list.innerHTML = plans.map(p => `
-            <div class="bg-white p-3 rounded-xl flex justify-between items-center card-shadow">
-                <div class="text-sm">
-                    <p class="font-bold text-gray-700">Неделя ${p.week_number}</p>
+            <div class="bg-white p-4 rounded-2xl border border-gray-100 flex justify-between items-center shadow-sm">
+                <div>
+                    <p class="font-bold text-gray-800">Неделя ${p.week_number}</p>
                     <p class="text-gray-500 text-xs">${p.start_date ? new Date(p.start_date).toLocaleDateString('ru-RU') : '...'} - ${p.end_date ? new Date(p.end_date).toLocaleDateString('ru-RU') : '...'}</p>
                 </div>
-                <button onclick="editPlan(${p.id})" class="text-indigo-600 text-xs font-bold">Изменить</button>
+                <button onclick="editPlan(${p.id})" class="bg-gray-100 text-indigo-600 px-4 py-2 rounded-xl text-xs font-bold active:scale-95">Изменить</button>
             </div>
         `).join('');
     }
@@ -277,6 +340,7 @@
     async function editPlan(id) {
         const { data: p } = await sb.from('plans').select('*').eq('id', id).single();
         if (p) {
+            document.getElementById('plan-form-title').innerText = 'Редактирование недели ' + p.week_number;
             document.getElementById('plan-id').value = p.id;
             document.getElementById('plan-week').value = p.week_number;
             document.getElementById('plan-start').value = p.start_date || '';
@@ -288,6 +352,13 @@
             document.getElementById('plan-acc').value = p.acc_plan;
             window.scrollTo(0, 0);
         }
+    }
+
+    function clearPlanForm() {
+        document.getElementById('plan-form-title').innerText = 'Новый план';
+        document.getElementById('plan-id').value = '';
+        ['plan-week', 'plan-start', 'plan-end', 'plan-sim', 'plan-sub', 'plan-merch', 'plan-fin', 'plan-acc'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('plan-week').value = currentWeek;
     }
 
     async function submitPlan() {
@@ -312,51 +383,93 @@
 
         if (error) return alert('Ошибка: ' + error.message);
         alert(planId ? 'План обновлен!' : 'План сохранен!');
-        document.getElementById('plan-id').value = ''; // Сбрасываем форму
+        clearPlanForm();
         loadPlansList();
     }
 
-    // === ЛОГИКА ФАКТОВ ===
+    async function addEmployee() {
+        const name = document.getElementById('new-user-name').value.trim();
+        const id = document.getElementById('new-user-id').value.trim();
+        if (!name || !id) return alert('Заполните оба поля');
+        const { error } = await sb.from('users').insert({ employee_id: id, name: name });
+        if (error) return alert(error.code === '23505' ? 'Сотрудник уже существует!' : 'Ошибка: ' + error.message);
+        alert('Сотрудник ' + name + ' добавлен!');
+        document.getElementById('new-user-name').value = '';
+        document.getElementById('new-user-id').value = '';
+    }
+
+    // === ЛОГИКА ДАННЫХ ===
     async function loadData() {
         const { data: plansData } = await sb.from('plans').select('*').eq('week_number', currentWeek);
         const plans = plansData && plansData.length > 0 ? plansData[0] : null;
         const { data: facts } = await sb.from('facts').select('*').eq('week_number', currentWeek);
 
         if (!plans) {
-            document.getElementById('kpi-breakdown').innerHTML = '<p class="text-red-400 text-center">Админ не задал план на эту неделю!</p>';
+            document.getElementById('daily-targets').innerHTML = '<p class="text-red-400 text-center col-span-2 py-4">План на эту неделю не задан!</p>';
+            document.getElementById('kpi-breakdown').innerHTML = '';
             return;
         }
 
         const totalFacts = { sim: 0, sub: 0, merch: 0, fin: 0, acc: 0 };
+        const todayFacts = { sim: 0, sub: 0, merch: 0, fin: 0, acc: 0 };
+        const todayStr = new Date().toLocaleDateString('ru-RU');
+
         facts.forEach(f => {
             totalFacts.sim += f.sim_fact;
             totalFacts.sub += f.sub_fact;
             totalFacts.merch += parseFloat(f.merch_fact);
             totalFacts.fin += parseFloat(f.fin_fact);
             totalFacts.acc += parseFloat(f.acc_fact);
+
+            const factDate = new Date(f.created_at).toLocaleDateString('ru-RU');
+            if (factDate === todayStr) {
+                todayFacts.sim += f.sim_fact;
+                todayFacts.sub += f.sub_fact;
+                todayFacts.merch += parseFloat(f.merch_fact);
+                todayFacts.fin += parseFloat(f.fin_fact);
+                todayFacts.acc += parseFloat(f.acc_fact);
+            }
         });
 
-        const today = new Date().getDay(); 
-        const workDaysPassed = today === 0 ? 5 : Math.min(today, 5);
         const workDaysTotal = 5;
-
         const metrics = [
-            { name: 'SIM', plan: plans.sim_plan, fact: totalFacts.sim },
-            { name: 'Абонем.', plan: plans.sub_plan, fact: totalFacts.sub },
-            { name: 'Товарооб.', plan: plans.merch_plan, fact: totalFacts.merch },
-            { name: 'Финуслуги', plan: plans.fin_plan, fact: totalFacts.fin },
-            { name: 'Аксессуары', plan: plans.acc_plan, fact: totalFacts.acc }
+            { name: 'SIM', plan: plans.sim_plan, fact: totalFacts.sim, todayFact: todayFacts.sim, color: 'bg-indigo-500' },
+            { name: 'Абонем.', plan: plans.sub_plan, fact: totalFacts.sub, todayFact: todayFacts.sub, color: 'bg-purple-500' },
+            { name: 'Товарооб.', plan: plans.merch_plan, fact: totalFacts.merch, todayFact: todayFacts.merch, color: 'bg-blue-500' },
+            { name: 'Финуслуги', plan: plans.fin_plan, fact: totalFacts.fin, todayFact: todayFacts.fin, color: 'bg-green-500' },
+            { name: 'Аксессуары', plan: plans.acc_plan, fact: totalFacts.acc, todayFact: todayFacts.acc, color: 'bg-teal-500' }
         ];
 
+        // Отрисовка Плана на сегодня
+        let dailyHTML = '';
+        metrics.forEach(m => {
+            const dailyPlan = m.plan / workDaysTotal;
+            const progress = dailyPlan > 0 ? Math.min((m.todayFact / dailyPlan) * 100, 100) : 0;
+            dailyHTML += `
+                <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                    <p class="text-xs text-gray-500 font-medium">${m.name}</p>
+                    <div class="flex items-baseline gap-1 mt-1">
+                        <span class="text-xl font-bold text-gray-900">${m.todayFact}</span>
+                        <span class="text-xs text-gray-400">/ ${dailyPlan.toFixed(0)}</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-1.5 mt-2">
+                        <div class="${m.color} h-1.5 rounded-full transition-all duration-500" style="width: ${progress}%"></div>
+                    </div>
+                </div>
+            `;
+        });
+        document.getElementById('daily-targets').innerHTML = dailyHTML;
+
+        // Расчет KPI
+        const today = new Date().getDay(); 
+        const workDaysPassed = today === 0 ? 5 : Math.min(today, 5);
         let totalKpi = 0, forecastKpi = 0, allMaxedOut = true, allMaxedOutFc = true;
-        let breakdownHTML = '', dailyTargetHTML = '';
-        let chartLabels = [], chartPlan = [], chartFact = [], chartForecast = [];
+        let breakdownHTML = '', chartLabels = [], chartPlan = [], chartFact = [], chartForecast = [];
 
         metrics.forEach(m => {
             let percent = m.plan > 0 ? (m.fact / m.plan) * 100 : 0;
             let calcPercent = percent, displayPercent = percent.toFixed(0);
             let statusColor = 'text-gray-500', statusText = '';
-
             let forecastFact = workDaysPassed > 0 ? (m.fact / workDaysPassed) * workDaysTotal : 0;
             let fcPercent = m.plan > 0 ? (forecastFact / m.plan) * 100 : 0;
             let calcFcPercent = fcPercent;
@@ -369,29 +482,26 @@
             else if (fcPercent > 150) { calcFcPercent = 150; }
             else { allMaxedOutFc = false; }
 
-            totalKpi += calcPercent;
-            forecastKpi += calcFcPercent;
+            totalKpi += calcPercent; forecastKpi += calcFcPercent;
 
-            breakdownHTML += `<div class="flex justify-between"><span>${m.name}</span><span class="${statusColor}">${displayPercent}% (Прогноз: ${fcPercent.toFixed(0)}%) ${statusText}</span></div>`;
-            dailyTargetHTML += `${m.name}: ${(m.plan / workDaysTotal).toFixed(0)} / `;
-
-            chartLabels.push(m.name);
-            chartPlan.push(m.plan);
-            chartFact.push(m.fact);
-            chartForecast.push(Math.round(forecastFact));
+            breakdownHTML += `<div class="flex justify-between items-center"><span class="text-gray-600">${m.name}</span><span class="${statusColor}">${displayPercent}% (Прогн: ${fcPercent.toFixed(0)}%) ${statusText}</span></div>`;
+            chartLabels.push(m.name); chartPlan.push(m.plan); chartFact.push(m.fact); chartForecast.push(Math.round(forecastFact));
         });
 
-        totalKpi = totalKpi / metrics.length;
-        forecastKpi = forecastKpi / metrics.length;
-
+        totalKpi = totalKpi / metrics.length; forecastKpi = forecastKpi / metrics.length;
         if (allMaxedOut) totalKpi = 200; else if (totalKpi < 70) totalKpi = 70;
         if (allMaxedOutFc) forecastKpi = 200; else if (forecastKpi < 70) forecastKpi = 70;
 
         document.getElementById('kpi-breakdown').innerHTML = breakdownHTML;
         document.getElementById('kpi-main-value').innerText = (totalKpi / 100).toFixed(2);
         document.getElementById('kpi-forecast').innerText = (forecastKpi / 100).toFixed(2);
-        document.getElementById('daily-target').innerText = dailyTargetHTML.slice(0, -2);
         document.getElementById('kpi-progress').style.width = Math.min(totalKpi / 2, 100) + '%';
+        
+        // Мотивационный текст
+        let motivText = 'Продолжай в том же духе!';
+        if (totalKpi < 80) motivText = 'Нужно поднажать, время еще есть!';
+        else if (totalKpi > 120) motivText = 'Отличная работа! Так держать!';
+        document.getElementById('motivation-text').innerText = motivText;
 
         updateChart(chartLabels, chartPlan, chartFact, chartForecast);
     }
@@ -406,10 +516,11 @@
                 { label: 'Факт', data: fact, backgroundColor: '#6366f1', borderRadius: 4 },
                 { label: 'Прогноз', data: forecast, backgroundColor: '#a78bfa', borderRadius: 4 }
             ]},
-            options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+            options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }, scales: { y: { beginAtZero: true, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 10 } } } } }
         });
     }
 
+    // === ВВОД ФАКТОВ ===
     async function submitFact() {
         const factId = document.getElementById('fact-id').value;
         const factData = {
@@ -422,10 +533,7 @@
             acc_fact: parseFloat(document.getElementById('fact-acc').value) || 0
         };
 
-        // АУДИТ: Если это редактирование, записываем, кто изменил
-        if (factId) {
-            factData.edited_by = currentUser.name;
-        }
+        if (factId) factData.edited_by = currentUser.name;
 
         let error;
         if (factId) {
@@ -442,7 +550,9 @@
 
     function clearFactForm() {
         document.getElementById('fact-id').value = '';
-        ['fact-sim', 'fact-sub', 'fact-merch', 'fact-fin', 'fact-acc'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('fact-sim').value = 0;
+        document.getElementById('fact-sub').value = 0;
+        ['fact-merch', 'fact-fin', 'fact-acc'].forEach(id => document.getElementById(id).value = '');
     }
 
     async function loadHistory() {
@@ -453,13 +563,11 @@
 
         const { data: facts } = await query.order('created_at', { ascending: false });
         const list = document.getElementById('history-list');
-        
         const { data: users } = await sb.from('users').select('*');
-        const userMap = {};
-        users.forEach(u => userMap[u.employee_id] = u.name);
+        const userMap = {}; users.forEach(u => userMap[u.employee_id] = u.name);
 
         if (!facts || facts.length === 0) {
-            list.innerHTML = '<p class="text-gray-400 text-sm text-center">Записей пока нет</p>';
+            list.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Записей пока нет</p>';
             return;
         }
 
@@ -467,15 +575,15 @@
             const empName = currentUser.employee_id === ADMIN_ID ? `<span class="font-bold text-indigo-600">${userMap[f.employee_id] || 'Неизвестный'}</span><br>` : '';
             const edited = f.edited_by ? ` <span class="text-orange-500 text-xs">(ред. ${f.edited_by})</span>` : '';
             return `
-            <div class="bg-white p-3 rounded-xl flex justify-between items-center card-shadow">
+            <div class="bg-white p-4 rounded-2xl border border-gray-100 flex justify-between items-center shadow-sm">
                 <div class="text-sm">
-                    <p class="text-gray-500">${new Date(f.created_at).toLocaleDateString('ru-RU')} ${edited}</p>
+                    <p class="text-gray-500 text-xs">${new Date(f.created_at).toLocaleDateString('ru-RU')} ${edited}</p>
                     ${empName}
-                    <p>Сим: ${f.sim_fact}, Абон: ${f.sub_fact}<br>Тов: ${f.merch_fact}₽, Фин: ${f.fin_fact}₽, Акс: ${f.acc_fact}₽</p>
+                    <p class="mt-1">Сим: ${f.sim_fact}, Абон: ${f.sub_fact}<br>Тов: ${f.merch_fact}₽, Фин: ${f.fin_fact}₽, Акс: ${f.acc_fact}₽</p>
                 </div>
-                <div class="flex gap-2">
-                    <button onclick="editFact(${f.id})" class="text-indigo-600 text-xs font-bold">Изменить</button>
-                    <button onclick="deleteFact(${f.id})" class="text-red-500 text-xs font-bold">Удалить</button>
+                <div class="flex flex-col gap-2">
+                    <button onclick="editFact(${f.id})" class="bg-gray-100 text-indigo-600 px-3 py-1 rounded-lg text-xs font-bold">Изменить</button>
+                    <button onclick="deleteFact(${f.id})" class="bg-gray-100 text-red-500 px-3 py-1 rounded-lg text-xs font-bold">Удалить</button>
                 </div>
             </div>`;
         }).join('');
