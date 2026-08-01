@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KPI Control Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .bottom-nav { box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+        .card-shadow { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="pb-24">
+
+<script>
+    const SUPABASE_URL = 'ВСТАВЬТЕ_СЮДА_PROJECT_URL';
+    const SUPABASE_KEY = 'ВСТАВЬТЕ_СЮДА_ANON_PUBLIC';
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+</script>
+
+<div class="max-w-md mx-auto bg-gray-50 min-h-screen relative">
+    
+    <!-- ЭКРАН АВТОРИЗАЦИИ -->
+    <div id="screen-login" class="hidden p-6 mt-20 fade-in">
+        <div class="text-center mb-8">
+            <div class="w-20 h-20 bg-indigo-600 rounded-3xl mx-auto mb-4 flex items-center justify-center shadow-lg">
+                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800">Вход в систему</h1>
+            <p class="text-gray-500 text-sm mt-2">Введите ваш табельный номер</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl card-shadow">
+            <input type="text" id="login-id" placeholder="Например: 1045" class="w-full p-4 border rounded-xl text-center text-2xl font-bold tracking-widest mb-4">
+            <button onclick="loginUser()" class="w-full bg-indigo-600 text-white py-4 rounded-xl font-semibold text-lg">Войти</button>
+            <p class="text-xs text-gray-400 text-center mt-4">Приложение запомнит это устройство.</p>
+        </div>
+    </div>
+
+    <!-- ЭКРАН ДАШБОРДА -->
+    <div id="screen-dashboard" class="hidden">
+        <header class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 rounded-b-3xl shadow-lg">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <p class="text-indigo-200 text-sm">Привет, <span id="user-name">...</span></p>
+                    <h1 class="text-2xl font-bold">Неделя <span id="current-week-display">34</span></h1>
+                </div>
+                <button onclick="logout()" class="text-xs bg-white/20 px-3 py-1 rounded-lg">Выйти</button>
+            </div>
+            
+            <div class="bg-white/10 backdrop-blur p-4 rounded-2xl border border-white/20 mb-3">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm font-medium">Коэффициент KPI (Прогноз: <span id="kpi-forecast">-</span>)</span>
+                    <span id="kpi-main-value" class="text-2xl font-extrabold text-yellow-300">- - -</span>
+                </div>
+                <div class="w-full bg-white/20 rounded-full h-2.5">
+                    <div id="kpi-progress" class="bg-yellow-300 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Ежедневный план -->
+            <div class="bg-white/10 backdrop-blur p-3 rounded-xl text-xs text-indigo-100 flex justify-between items-center">
+                <span>План на сегодня (1/5 недели):</span>
+                <span id="daily-target" class="font-bold text-white">Загрузка...</span>
+            </div>
+        </header>
+
+        <!-- График План/Факт -->
+        <div class="px-4 mt-4">
+            <div class="bg-white p-4 rounded-2xl card-shadow">
+                <h3 class="font-bold text-gray-800 mb-2">План / Факт</h3>
+                <canvas id="planFactChart" height="180"></canvas>
+            </div>
+        </div>
+
+        <!-- Матрица KPI -->
+        <div class="px-4 mt-4">
+            <div class="bg-white p-4 rounded-2xl card-shadow">
+                <h3 class="font-bold text-gray-800 mb-3">Детализация (с прогнозом)</h3>
+                <div id="kpi-breakdown" class="space-y-2 text-sm text-gray-600"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ЭКРАН ВНЕСТИ ФАКТ -->
+    <div id="screen-fact" class="hidden p-4 fade-in">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Внести данные за день</h2>
+        <div class="bg-white p-4 rounded-2xl card-shadow space-y-3">
+            <input type="hidden" id="fact-id">
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-xs text-gray-500">Активные SIM</label><input type="number" id="fact-sim" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
+                <div><label class="text-xs text-gray-500">Абонементы</label><input type="number" id="fact-sub" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
+            </div>
+            <div><label class="text-xs text-gray-500">Товарооборот (₽)</label><input type="number" id="fact-merch" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
+            <div><label class="text-xs text-gray-500">Финуслуги (₽)</label><input type="number" id="fact-fin" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
+            <div><label class="text-xs text-gray-500">Аксессуары (₽)</label><input type="number" id="fact-acc" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
+            <button onclick="submitFact()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold mt-2">Сохранить</button>
+        </div>
+
+        <!-- История для редактирования -->
+        <h3 class="text-lg font-bold text-gray-800 mt-6 mb-3">Мои записи за эту неделю</h3>
+        <div id="history-list" class="space-y-2"></div>
+    </div>
+
+    <!-- ЭКРАН АДМИНКИ -->
+    <div id="screen-admin" class="hidden p-4 fade-in">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Установка плана на неделю</h2>
+        <div class="bg-white p-4 rounded-2xl card-shadow space-y-3">
+             <div><label class="text-xs text-gray-500">Номер недели</label><input type="number" id="plan-week" placeholder="34" class="w-full p-3 border rounded-xl text-sm"></div>
+             <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-xs text-gray-500">План SIM (шт)</label><input type="number" id="plan-sim" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
+                <div><label class="text-xs text-gray-500">План Абонементы (шт)</label><input type="number" id="plan-sub" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
+            </div>
+            <div><label class="text-xs text-gray-500">План Товарооборот (₽)</label><input type="number" id="plan-merch" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
+            <div><label class="text-xs text-gray-500">План Финуслуги (₽)</label><input type="number" id="plan-fin" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
+            <div><label class="text-xs text-gray-500">План Аксессуары (₽)</label><input type="number" id="plan-acc" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
+            <button onclick="submitPlan()" class="w-full bg-purple-600 text-white py-3 rounded-xl font-semibold mt-2">Сохранить план</button>
+        </div>
+    </div>
+
+    <!-- Нижнее меню -->
+    <nav class="bottom-nav fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white flex justify-around p-3 rounded-t-2xl">
+        <button onclick="showScreen('dashboard')" class="flex flex-col items-center text-gray-400 nav-btn" data-screen="dashboard">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+            <span class="text-xs font-medium">Дашборд</span>
+        </button>
+        <button onclick="showScreen('fact')" class="flex flex-col items-center text-gray-400 nav-btn" data-screen="fact">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span class="text-xs font-medium">Внести факт</span>
+        </button>
+        <button onclick="showScreen('admin')" class="flex flex-col items-center text-gray-400 nav-btn" data-screen="admin">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            <span class="text-xs font-medium">Админка</span>
+        </button>
+    </nav>
+</div>
+
+<script>
+    // --- УПРАВЛЕНИЕ ЭКРАНАМИ И АВТОРИЗАЦИЯ ---
+    let currentUser = JSON.parse(localStorage.getItem('kpi_user'));
+    let currentWeek = getCurrentWeek();
+    let planFactChart;
+
+    function getCurrentWeek() {
+        const date = new Date();
+        date.setHours(0, 0, 0, 0);
+        date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+        const week1 = new Date(date.getFullYear(), 0, 4);
+        return 1 + Math.round(((date - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+    }
+
+    function checkAuth() {
+        if (currentUser) {
+            document.getElementById('user-name').innerText = currentUser.name;
+            showScreen('dashboard');
+        } else {
+            showScreen('login');
+        }
+    }
+
+    async function loginUser() {
+        const empId = document.getElementById('login-id').value.trim();
+        if (!empId) return alert('Введите табельный номер');
+
+        // Ищем пользователя в базе
+        const { data, error } = await supabase.from('users').select('*').eq('employee_id', empId).single();
+        
+        if (error || !data) {
+            // Если нет, создаем нового (в реальном админке их бы создавал HR, тут для простоты автосоздание)
+            const { data: newUser, error: insertError } = await supabase
+                .from('users')
+                .insert({ employee_id: empId, name: 'Сотрудник ' + empId })
+                .select()
+                .single();
+            
+            if (insertError) return alert('Ошибка авторизации');
+            currentUser = newUser;
+        } else {
+            currentUser = data;
+        }
+
+        localStorage.setItem('kpi_user', JSON.stringify(currentUser));
+        document.getElementById('user-name').innerText = currentUser.name;
+        showScreen('dashboard');
+    }
+
+    function logout() {
+        localStorage.removeItem('kpi_user');
+        currentUser = null;
+        showScreen('login');
+    }
+
+    function showScreen(screenName) {
+        ['login', 'dashboard', 'fact', 'admin'].forEach(s => {
+            document.getElementById('screen-' + s).classList.add('hidden');
+        });
+        document.getElementById('screen-' + screenName).classList.remove('hidden');
+        document.getElementById('screen-' + screenName).classList.add('fade-in');
+
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.classList.remove('text-indigo-600');
+            btn.classList.add('text-gray-400');
+        });
+        const activeBtn = document.querySelector(`[data-screen="${screenName}"]`);
+        if (activeBtn) {
+            activeBtn.classList.add('text-indigo-600');
+            activeBtn.classList.remove('text-gray-400');
+        }
+
+        if(screenName === 'dashboard') loadData();
+        if(screenName === 'fact') loadHistory();
+    }
+
+    // --- ЛОГИКА ДАННЫХ ---
+    document.getElementById('current-week-display').innerText = currentWeek;
+    document.getElementById('plan-week').value = currentWeek;
+
+    async function loadData() {
+        const { data: plans } = await supabase.from('plans').select('*').eq('week_number', currentWeek).single();
+        const { data: facts } = await supabase.from('facts').select('*').eq('week_number', currentWeek);
+
+        if (!plans) {
+            document.getElementById('kpi-breakdown').innerHTML = '<p class="text-red-400 text-center">Админ не задал план!</p>';
+            return;
+        }
+
+        const totalFacts = { sim: 0, sub: 0, merch: 0, fin: 0, acc: 0 };
+        facts.forEach(f => {
+            totalFacts.sim += f.sim_fact;
+            totalFacts.sub += f.sub_fact;
+            totalFacts.merch += parseFloat(f.merch_fact);
+            totalFacts.fin += parseFloat(f.fin_fact);
+            totalFacts.acc += parseFloat(f.acc_fact);
+        });
+
+        // Прогноз: считаем прошедшие дни (Пн=1, Вс=7). Рабочих 5.
+        const today = new Date().getDay(); 
+        const workDaysPassed = today === 0 ? 5 : Math.min(today, 5); // Если воскресенье, считаем что неделя прошла
+        const workDaysTotal = 5;
+
+        const metrics = [
+            { name: 'SIM', plan: plans.sim_plan, fact: totalFacts.sim },
+            { name: 'Абонем.', plan: plans.sub_plan, fact: totalFacts.sub },
+            { name: 'Товарооб.', plan: plans.merch_plan, fact: totalFacts.merch },
+            { name: 'Финуслуги', plan: plans.fin_plan, fact: totalFacts.fin },
+            { name: 'Аксессуары', plan: plans.acc_plan, fact: totalFacts.acc }
+        ];
+
+        let totalKpi = 0, forecastKpi = 0, allMaxedOut = true, allMaxedOutFc = true;
+        let breakdownHTML = '', dailyTargetHTML = '';
+        let chartLabels = [], chartPlan = [], chartFact = [], chartForecast = [];
+
+        metrics.forEach(m => {
+            // Текущий %
+            let percent = m.plan > 0 ? (m.fact / m.plan) * 100 : 0;
+            let calcPercent = percent, displayPercent = percent.toFixed(0);
+            let statusColor = 'text-gray-500', statusText = '';
+
+            // Прогноз %
+            let forecastFact = workDaysPassed > 0 ? (m.fact / workDaysPassed) * workDaysTotal : 0;
+            let fcPercent = m.plan > 0 ? (forecastFact / m.plan) * 100 : 0;
+            let calcFcPercent = fcPercent;
+
+            // Применяем правила KPI (текущий)
+            if (percent < 70) { calcPercent = 0; statusColor = 'text-red-500 font-bold'; statusText = '(обнуление)'; allMaxedOut = false; }
+            else if (percent > 150) { calcPercent = 150; displayPercent = '150'; statusColor = 'text-blue-500 font-bold'; statusText = '(потолок)'; }
+            else { allMaxedOut = false; }
+
+            // Применяем правила KPI (прогноз)
+            if (fcPercent < 70) { calcFcPercent = 0; allMaxedOutFc = false; }
+            else if (fcPercent > 150) { calcFcPercent = 150; }
+            else { allMaxedOutFc = false; }
+
+            totalKpi += calcPercent;
+            forecastKpi += calcFcPercent;
+
+            breakdownHTML += `<div class="flex justify-between"><span>${m.name}</span><span class="${statusColor}">${displayPercent}% (Прогноз: ${fcPercent.toFixed(0)}%) ${statusText}</span></div>`;
+            
+            // План на день (для шапки)
+            const dailyVal = m.plan > 0 ? (m.plan / workDaysTotal).toFixed(0) : 0;
+            dailyTargetHTML += `${m.name}: ${dailyVal} / `;
+
+            // Данные для графика
+            chartLabels.push(m.name);
+            chartPlan.push(m.plan);
+            chartFact.push(m.fact);
+            chartForecast.push(Math.round(forecastFact));
+        });
+
+        totalKpi = totalKpi / metrics.length;
+        forecastKpi = forecastKpi / metrics.length;
+
+        if (allMaxedOut) totalKpi = 200; else if (totalKpi < 70) totalKpi = 70;
+        if (allMaxedOutFc) forecastKpi = 200; else if (forecastKpi < 70) forecastKpi = 70;
+
+        document.getElementById('kpi-breakdown').innerHTML = breakdownHTML;
+        document.getElementById('kpi-main-value').innerText = (totalKpi / 100).toFixed(2);
+        document.getElementById('kpi-forecast').innerText = (forecastKpi / 100).toFixed(2);
+        document.getElementById('daily-target').innerText = dailyTargetHTML.slice(0, -2); // Убираем последнюю запятую
+        document.getElementById('kpi-progress').style.width = Math.min(totalKpi / 2, 100) + '%';
+
+        updateChart(chartLabels, chartPlan, chartFact, chartForecast);
+    }
+
+    function updateChart(labels, plan, fact, forecast) {
+        const ctx = document.getElementById('planFactChart').getContext('2d');
+        if (planFactChart) planFactChart.destroy();
+        planFactChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'План', data: plan, backgroundColor: '#e5e7eb', borderRadius: 4 },
+                    { label: 'Факт', data: fact, backgroundColor: '#6366f1', borderRadius: 4 },
+                    { label: 'Прогноз', data: forecast, backgroundColor: '#a78bfa', borderRadius: 4 }
+                ]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+        });
+    }
+
+    // --- ВВОД И РЕДАКТИРОВАНИЕ ФАКТОВ ---
+    async function submitFact() {
+        const factId = document.getElementById('fact-id').value;
+        const factData = {
+            week_number: currentWeek,
+            employee_id: currentUser.employee_id,
+            sim_fact: parseInt(document.getElementById('fact-sim').value) || 0,
+            sub_fact: parseInt(document.getElementById('fact-sub').value) || 0,
+            merch_fact: parseFloat(document.getElementById('fact-merch').value) || 0,
+            fin_fact: parseFloat(document.getElementById('fact-fin').value) || 0,
+            acc_fact: parseFloat(document.getElementById('fact-acc').value) || 0
+        };
+
+        let error;
+        if (factId) {
+            // Редактирование
+            ({ error } = await supabase.from('facts').update(factData).eq('id', factId));
+        } else {
+            // Новый факт
+            ({ error } = await supabase.from('facts').insert([factData]));
+        }
+
+        if (error) return alert('Ошибка: ' + error.message);
+        alert(factId ? 'Обновлено!' : 'Сохранено!');
+        clearFactForm();
+        loadHistory();
+    }
+
+    function clearFactForm() {
+        document.getElementById('fact-id').value = '';
+        ['fact-sim', 'fact-sub', 'fact-merch', 'fact-fin', 'fact-acc'].forEach(id => document.getElementById(id).value = '');
+    }
+
+    async function loadHistory() {
+        const { data: facts } = await supabase.from('facts').select('*').eq('employee_id', currentUser.employee_id).eq('week_number', currentWeek);
+        const list = document.getElementById('history-list');
+        
+        if (!facts || facts.length === 0) {
+            list.innerHTML = '<p class="text-gray-400 text-sm text-center">Записей пока нет</p>';
+            return;
+        }
+
+        list.innerHTML = facts.map(f => `
+            <div class="bg-white p-3 rounded-xl flex justify-between items-center card-shadow">
+                <div class="text-sm">
+                    <p class="text-gray-500">${new Date(f.created_at).toLocaleDateString()}</p>
+                    <p>Сим: ${f.sim_fact}, Абон: ${f.sub_fact}</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="editFact(${f.id})" class="text-indigo-600 text-xs font-bold">Изменить</button>
+                    <button onclick="deleteFact(${f.id})" class="text-red-500 text-xs font-bold">Удалить</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function editFact(id) {
+        const { data: f } = await supabase.from('facts').select('*').eq('id', id).single();
+        if (f) {
+            document.getElementById('fact-id').value = f.id;
+            document.getElementById('fact-sim').value = f.sim_fact;
+            document.getElementById('fact-sub').value = f.sub_fact;
+            document.getElementById('fact-merch').value = f.merch_fact;
+            document.getElementById('fact-fin').value = f.fin_fact;
+            document.getElementById('fact-acc').value = f.acc_fact;
+            window.scrollTo(0, 0);
+        }
+    }
+
+    async function deleteFact(id) {
+        if (!confirm('Удалить эту запись?')) return;
+        await supabase.from('facts').delete().eq('id', id);
+        loadHistory();
+    }
+
+    async function submitPlan() {
+        const plan = {
+            week_number: parseInt(document.getElementById('plan-week').value),
+            sim_plan: parseInt(document.getElementById('plan-sim').value) || 0,
+            sub_plan: parseInt(document.getElementById('plan-sub').value) || 0,
+            merch_plan: parseFloat(document.getElementById('plan-merch').value) || 0,
+            fin_plan: parseFloat(document.getElementById('plan-fin').value) || 0,
+            acc_plan: parseFloat(document.getElementById('plan-acc').value) || 0
+        };
+        const { error } = await supabase.from('plans').insert([plan]);
+        if (error) alert('Ошибка: ' + error.message);
+        else alert('План сохранен!');
+    }
+
+    // --- ПУШ-УВЕДОМЛЕНИЯ ---
+    function setupNotifications() {
+        if (!('Notification' in window)) return;
+        // В 17:00 напоминаем
+        const now = new Date();
+        const target = new Date();
+        target.setHours(17, 0, 0, 0);
+        if (now > target) target.setDate(target.getDate() + 1); // Если уже после 17, на завтра
+        
+        const msToTarget = target - now;
+        
+        setTimeout(() => {
+            if (Notification.permission === 'granted') {
+                new Notification('План-Факт Контроль', { body: 'Не забудь внести продажи за сегодня!' });
+            }
+            // Перезапускаем на следующий день (грубо, для PWA хватает)
+            setInterval(() => {
+                if (Notification.permission === 'granted') {
+                    new Notification('План-Факт Контроль', { body: 'Не забудь внести продажи за сегодня!' });
+                }
+            }, 24 * 60 * 60 * 1000);
+        }, msToTarget);
+    }
+
+    // Запрос разрешения на пуши при первом входе
+    if (currentUser) {
+        if (Notification.permission === 'default') {
+            Notification.requestPermission().then(p => { if (p === 'granted') setupNotifications(); });
+        } else if (Notification.permission === 'granted') {
+            setupNotifications();
+        }
+    }
+
+    // СТАРТ
+    checkAuth();
+</script>
+</body>
+</html>
