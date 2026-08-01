@@ -21,18 +21,14 @@
 <body class="pb-24">
 
 <script>
-    // === НАСТРОЙКИ ПОДКЛЮЧЕНИЯ ===
     const SUPABASE_URL = 'https://akoimsmxpggbntzizlto.supabase.co'; 
     const SUPABASE_KEY = 'sb_publishable_ZKevprH_SzPYd59RSGPUSw_LFsA2Row';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    
-    // ВАШ ТАБЕЛЬНЫЙ НОМЕР (ТОЛЬКО ДЛЯ НЕГО ВИДНА АДМИНКА)
     const ADMIN_ID = '18811975'; 
 </script>
 
 <div class="max-w-md mx-auto bg-gray-50 min-h-screen relative">
     
-    <!-- ЭКРАН АВТОРИЗАЦИИ -->
     <div id="screen-login" class="hidden p-6 mt-20 fade-in">
         <div class="text-center mb-8">
             <div class="w-20 h-20 bg-indigo-600 rounded-3xl mx-auto mb-4 flex items-center justify-center shadow-lg">
@@ -47,7 +43,6 @@
         </div>
     </div>
 
-    <!-- ЭКРАН ДАШБОРДА -->
     <div id="screen-dashboard" class="hidden">
         <header class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 rounded-b-3xl shadow-lg">
             <div class="flex justify-between items-center mb-4">
@@ -58,7 +53,6 @@
                 </div>
                 <button onclick="logout()" class="text-xs bg-white/20 px-3 py-1 rounded-lg">Выйти</button>
             </div>
-            
             <div class="bg-white/10 backdrop-blur p-4 rounded-2xl border border-white/20 mb-3">
                 <div class="flex justify-between items-center mb-2">
                     <span class="text-sm font-medium">KPI (Прогноз: <span id="kpi-forecast">-</span>)</span>
@@ -89,7 +83,6 @@
         </div>
     </div>
 
-    <!-- ЭКРАН ВНЕСТИ ФАКТ -->
     <div id="screen-fact" class="hidden p-4 fade-in">
         <h2 class="text-xl font-bold text-gray-800 mb-4">Внести данные за день</h2>
         <div class="bg-white p-4 rounded-2xl card-shadow space-y-3">
@@ -110,9 +103,14 @@
 
     <!-- ЭКРАН АДМИНКИ -->
     <div id="screen-admin" class="hidden p-4 fade-in">
-        <h2 class="text-xl font-bold text-gray-800 mb-4">Установка плана на неделю</h2>
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Управление планами</h2>
         <div class="bg-white p-4 rounded-2xl card-shadow space-y-3">
+            <input type="hidden" id="plan-id">
              <div><label class="text-xs text-gray-500">Номер недели</label><input type="number" id="plan-week" placeholder="34" class="w-full p-3 border rounded-xl text-sm"></div>
+             <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-xs text-gray-500">Дата начала</label><input type="date" id="plan-start" class="w-full p-3 border rounded-xl text-sm"></div>
+                <div><label class="text-xs text-gray-500">Дата окончания</label><input type="date" id="plan-end" class="w-full p-3 border rounded-xl text-sm"></div>
+            </div>
              <div class="grid grid-cols-2 gap-3">
                 <div><label class="text-xs text-gray-500">План SIM (шт)</label><input type="number" id="plan-sim" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
                 <div><label class="text-xs text-gray-500">План Абонементы (шт)</label><input type="number" id="plan-sub" placeholder="0" class="w-full p-3 border rounded-xl text-sm"></div>
@@ -123,6 +121,9 @@
             <button onclick="submitPlan()" class="w-full bg-purple-600 text-white py-3 rounded-xl font-semibold mt-2">Сохранить план</button>
         </div>
 
+        <h3 class="text-lg font-bold text-gray-800 mt-6 mb-3">Существующие планы</h3>
+        <div id="plans-list" class="space-y-2"></div>
+
         <h2 class="text-xl font-bold text-gray-800 mt-8 mb-4">Добавить сотрудника</h2>
         <div class="bg-white p-4 rounded-2xl card-shadow space-y-3">
             <div><label class="text-xs text-gray-500">Имя сотрудника</label><input type="text" id="new-user-name" placeholder="Иван Иванов" class="w-full p-3 border rounded-xl text-sm"></div>
@@ -131,7 +132,6 @@
         </div>
     </div>
 
-    <!-- Нижнее меню -->
     <nav class="bottom-nav fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white flex justify-around p-3 rounded-t-2xl">
         <button onclick="showScreen('dashboard')" class="flex flex-col items-center text-gray-400 nav-btn" data-screen="dashboard">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
@@ -161,13 +161,11 @@
         return 1 + Math.round(((date - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
     }
 
-    // Функция для отображения даты
     function setCurrentDate() {
         const days = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
         const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
         const today = new Date();
-        const dateString = `${days[today.getDay()]}, ${today.getDate()} ${months[today.getMonth()]}`;
-        document.getElementById('current-date-display').innerText = dateString;
+        document.getElementById('current-date-display').innerText = `${days[today.getDay()]}, ${today.getDate()} ${months[today.getMonth()]}`;
     }
 
     function checkAuth() {
@@ -182,7 +180,7 @@
                 document.getElementById('nav-admin-btn').classList.remove('flex');
                 document.getElementById('history-title').innerText = 'Мои записи за эту неделю';
             }
-            setCurrentDate(); // Устанавливаем дату при входе
+            setCurrentDate();
             showScreen('dashboard');
         } else {
             showScreen('login');
@@ -198,10 +196,7 @@
         
         if (!data) {
             if (empId === ADMIN_ID) {
-                const { data: newAdminData } = await sb
-                    .from('users')
-                    .insert({ employee_id: empId, name: 'Администратор' })
-                    .select();
+                const { data: newAdminData } = await sb.from('users').insert({ employee_id: empId, name: 'Администратор' }).select();
                 currentUser = newAdminData[0];
             } else {
                 return alert('Сотрудник не найден. Обратитесь к руководителю.');
@@ -223,13 +218,9 @@
     }
 
     function showScreen(screenName) {
-        if (screenName === 'admin' && currentUser.employee_id !== ADMIN_ID) {
-            return alert('Доступ запрещен');
-        }
+        if (screenName === 'admin' && currentUser.employee_id !== ADMIN_ID) return alert('Доступ запрещен');
 
-        ['login', 'dashboard', 'fact', 'admin'].forEach(s => {
-            document.getElementById('screen-' + s).classList.add('hidden');
-        });
+        ['login', 'dashboard', 'fact', 'admin'].forEach(s => document.getElementById('screen-' + s).classList.add('hidden'));
         document.getElementById('screen-' + screenName).classList.remove('hidden');
         document.getElementById('screen-' + screenName).classList.add('fade-in');
 
@@ -245,6 +236,7 @@
 
         if(screenName === 'dashboard') loadData();
         if(screenName === 'fact') loadHistory();
+        if(screenName === 'admin') loadPlansList();
     }
 
     document.getElementById('current-week-display').innerText = currentWeek;
@@ -256,19 +248,78 @@
         if (!name || !id) return alert('Заполните оба поля');
 
         const { error } = await sb.from('users').insert({ employee_id: id, name: name });
-        if (error) {
-            if (error.code === '23505') return alert('Сотрудник с таким табельным уже существует!');
-            return alert('Ошибка: ' + error.message);
-        }
+        if (error) return alert(error.code === '23505' ? 'Сотрудник с таким табельным уже существует!' : 'Ошибка: ' + error.message);
+        
         alert('Сотрудник ' + name + ' успешно добавлен!');
         document.getElementById('new-user-name').value = '';
         document.getElementById('new-user-id').value = '';
     }
 
+    // === ЛОГИКА ПЛАНОВ (АДМИН) ===
+    async function loadPlansList() {
+        const { data: plans } = await sb.from('plans').select('*').order('week_number', { ascending: false });
+        const list = document.getElementById('plans-list');
+        if (!plans || plans.length === 0) {
+            list.innerHTML = '<p class="text-gray-400 text-sm text-center">Планов пока нет</p>';
+            return;
+        }
+        list.innerHTML = plans.map(p => `
+            <div class="bg-white p-3 rounded-xl flex justify-between items-center card-shadow">
+                <div class="text-sm">
+                    <p class="font-bold text-gray-700">Неделя ${p.week_number}</p>
+                    <p class="text-gray-500 text-xs">${p.start_date ? new Date(p.start_date).toLocaleDateString('ru-RU') : '...'} - ${p.end_date ? new Date(p.end_date).toLocaleDateString('ru-RU') : '...'}</p>
+                </div>
+                <button onclick="editPlan(${p.id})" class="text-indigo-600 text-xs font-bold">Изменить</button>
+            </div>
+        `).join('');
+    }
+
+    async function editPlan(id) {
+        const { data: p } = await sb.from('plans').select('*').eq('id', id).single();
+        if (p) {
+            document.getElementById('plan-id').value = p.id;
+            document.getElementById('plan-week').value = p.week_number;
+            document.getElementById('plan-start').value = p.start_date || '';
+            document.getElementById('plan-end').value = p.end_date || '';
+            document.getElementById('plan-sim').value = p.sim_plan;
+            document.getElementById('plan-sub').value = p.sub_plan;
+            document.getElementById('plan-merch').value = p.merch_plan;
+            document.getElementById('plan-fin').value = p.fin_plan;
+            document.getElementById('plan-acc').value = p.acc_plan;
+            window.scrollTo(0, 0);
+        }
+    }
+
+    async function submitPlan() {
+        const planId = document.getElementById('plan-id').value;
+        const planData = {
+            week_number: parseInt(document.getElementById('plan-week').value),
+            start_date: document.getElementById('plan-start').value || null,
+            end_date: document.getElementById('plan-end').value || null,
+            sim_plan: parseInt(document.getElementById('plan-sim').value) || 0,
+            sub_plan: parseInt(document.getElementById('plan-sub').value) || 0,
+            merch_plan: parseFloat(document.getElementById('plan-merch').value) || 0,
+            fin_plan: parseFloat(document.getElementById('plan-fin').value) || 0,
+            acc_plan: parseFloat(document.getElementById('plan-acc').value) || 0
+        };
+
+        let error;
+        if (planId) {
+            ({ error } = await sb.from('plans').update(planData).eq('id', planId));
+        } else {
+            ({ error } = await sb.from('plans').insert([planData]));
+        }
+
+        if (error) return alert('Ошибка: ' + error.message);
+        alert(planId ? 'План обновлен!' : 'План сохранен!');
+        document.getElementById('plan-id').value = ''; // Сбрасываем форму
+        loadPlansList();
+    }
+
+    // === ЛОГИКА ФАКТОВ ===
     async function loadData() {
         const { data: plansData } = await sb.from('plans').select('*').eq('week_number', currentWeek);
         const plans = plansData && plansData.length > 0 ? plansData[0] : null;
-        
         const { data: facts } = await sb.from('facts').select('*').eq('week_number', currentWeek);
 
         if (!plans) {
@@ -322,9 +373,7 @@
             forecastKpi += calcFcPercent;
 
             breakdownHTML += `<div class="flex justify-between"><span>${m.name}</span><span class="${statusColor}">${displayPercent}% (Прогноз: ${fcPercent.toFixed(0)}%) ${statusText}</span></div>`;
-            
-            const dailyVal = m.plan > 0 ? (m.plan / workDaysTotal).toFixed(0) : 0;
-            dailyTargetHTML += `${m.name}: ${dailyVal} / `;
+            dailyTargetHTML += `${m.name}: ${(m.plan / workDaysTotal).toFixed(0)} / `;
 
             chartLabels.push(m.name);
             chartPlan.push(m.plan);
@@ -352,14 +401,11 @@
         if (planFactChart) planFactChart.destroy();
         planFactChart = new Chart(ctx, {
             type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [
-                    { label: 'План', data: plan, backgroundColor: '#e5e7eb', borderRadius: 4 },
-                    { label: 'Факт', data: fact, backgroundColor: '#6366f1', borderRadius: 4 },
-                    { label: 'Прогноз', data: forecast, backgroundColor: '#a78bfa', borderRadius: 4 }
-                ]
-            },
+            data: { labels: labels, datasets: [
+                { label: 'План', data: plan, backgroundColor: '#e5e7eb', borderRadius: 4 },
+                { label: 'Факт', data: fact, backgroundColor: '#6366f1', borderRadius: 4 },
+                { label: 'Прогноз', data: forecast, backgroundColor: '#a78bfa', borderRadius: 4 }
+            ]},
             options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
         });
     }
@@ -375,6 +421,11 @@
             fin_fact: parseFloat(document.getElementById('fact-fin').value) || 0,
             acc_fact: parseFloat(document.getElementById('fact-acc').value) || 0
         };
+
+        // АУДИТ: Если это редактирование, записываем, кто изменил
+        if (factId) {
+            factData.edited_by = currentUser.name;
+        }
 
         let error;
         if (factId) {
@@ -396,8 +447,6 @@
 
     async function loadHistory() {
         let query = sb.from('facts').select('*').eq('week_number', currentWeek);
-        
-        // ЕСЛИ НЕ АДМИН - ИЩЕМ ТОЛЬКО СВОИ ЗАПИСИ
         if (currentUser.employee_id !== ADMIN_ID) {
             query = query.eq('employee_id', currentUser.employee_id);
         }
@@ -405,7 +454,6 @@
         const { data: facts } = await query.order('created_at', { ascending: false });
         const list = document.getElementById('history-list');
         
-        // Загружаем список сотрудников, чтобы админ видел имена
         const { data: users } = await sb.from('users').select('*');
         const userMap = {};
         users.forEach(u => userMap[u.employee_id] = u.name);
@@ -416,12 +464,12 @@
         }
 
         list.innerHTML = facts.map(f => {
-            // Если админ - показываем имя сотрудника
             const empName = currentUser.employee_id === ADMIN_ID ? `<span class="font-bold text-indigo-600">${userMap[f.employee_id] || 'Неизвестный'}</span><br>` : '';
+            const edited = f.edited_by ? ` <span class="text-orange-500 text-xs">(ред. ${f.edited_by})</span>` : '';
             return `
             <div class="bg-white p-3 rounded-xl flex justify-between items-center card-shadow">
                 <div class="text-sm">
-                    <p class="text-gray-500">${new Date(f.created_at).toLocaleDateString('ru-RU')}</p>
+                    <p class="text-gray-500">${new Date(f.created_at).toLocaleDateString('ru-RU')} ${edited}</p>
                     ${empName}
                     <p>Сим: ${f.sim_fact}, Абон: ${f.sub_fact}<br>Тов: ${f.merch_fact}₽, Фин: ${f.fin_fact}₽, Акс: ${f.acc_fact}₽</p>
                 </div>
@@ -429,14 +477,13 @@
                     <button onclick="editFact(${f.id})" class="text-indigo-600 text-xs font-bold">Изменить</button>
                     <button onclick="deleteFact(${f.id})" class="text-red-500 text-xs font-bold">Удалить</button>
                 </div>
-            </div>
-        `}).join('');
+            </div>`;
+        }).join('');
     }
 
     async function editFact(id) {
         const { data: factData } = await sb.from('facts').select('*').eq('id', id);
         const f = factData && factData.length > 0 ? factData[0] : null;
-        
         if (f) {
             document.getElementById('fact-id').value = f.id;
             document.getElementById('fact-sim').value = f.sim_fact;
@@ -454,29 +501,7 @@
         loadHistory();
     }
 
-    async function submitPlan() {
-        const plan = {
-            week_number: parseInt(document.getElementById('plan-week').value),
-            sim_plan: parseInt(document.getElementById('plan-sim').value) || 0,
-            sub_plan: parseInt(document.getElementById('plan-sub').value) || 0,
-            merch_plan: parseFloat(document.getElementById('plan-merch').value) || 0,
-            fin_plan: parseFloat(document.getElementById('plan-fin').value) || 0,
-            acc_plan: parseFloat(document.getElementById('plan-acc').value) || 0
-        };
-        const { error } = await sb.from('plans').insert([plan]);
-        if (error) alert('Ошибка: ' + error.message);
-        else alert('План сохранен!');
-    }
-
     checkAuth();
-    
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('sw.js')
-            .then(reg => console.log('SW registered: ', reg.scope))
-            .catch(err => console.log('SW registration failed: ', err));
-        });
-      }
-    </script>
+</script>
 </body>
 </html>
